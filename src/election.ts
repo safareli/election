@@ -5,7 +5,7 @@ function flatMap<T, U>(
   return Array.prototype.concat(...array.map(callbackfn));
 }
 export type Voter = string;
-export type Candidate = string;
+export type Candidate = { candidate: string; percent: number };
 export type PositionProposal = Array<Candidate>;
 export type Weight = number; // integer
 export type Vote = { order: Array<PositionProposal> } & Supporter;
@@ -17,39 +17,42 @@ export type VoteNE = {
 export type Supporter = { voter: Voter; weight: Weight };
 export type Supporters = Array<Supporter>;
 export type CandidateWeighted = {
-  candidate: Candidate;
+  // TODO add field stating how much was actually
+  // spent for example ∑hen there is full consensus no weight is spent
+  candidate: string;
   weight: Weight;
   supporters: Supporters;
 };
 export type Result = Array<CandidateWeighted>;
 
 const removeWinner = (
-  winnerCandidate: Candidate,
+  winnerCandidate: string,
   order: Array<PositionProposal>
 ): Array<PositionProposal> => {
   return order
-    .map((pos) => pos.filter((candidate) => candidate !== winnerCandidate))
+    .map((pos) => pos.filter(({ candidate }) => candidate !== winnerCandidate))
     .filter((x) => x.length > 0);
 };
 const sortByWeight = (votes: Array<VoteNE>): Result => {
   const candidateWeights: Map<
-    Candidate,
+    string,
     {
       weight: Weight;
       supporters: Array<{ voter: Voter; weight: Weight }>;
     }
   > = new Map();
   votes.forEach((vote: VoteNE) => {
-    vote.orderHead.forEach((candidate) => {
+    vote.orderHead.forEach(({ candidate, percent }) => {
       const current = candidateWeights.get(candidate) || {
         weight: 0,
         supporters: [],
       };
+      const support = vote.weight * (percent / 100);
       candidateWeights.set(candidate, {
-        weight: current.weight + vote.weight,
+        weight: current.weight + support,
         supporters: current.supporters.concat({
           voter: vote.voter,
-          weight: vote.weight,
+          weight: support,
         }),
       });
     });
@@ -119,7 +122,9 @@ function* solveOneRound(
     // candidatesSorted.length is 2 or more so the main opponent exists
     const opponents = sortByWeight(
       votes.filter(
-        (vote: VoteNE) => vote.orderHead.indexOf(winner.candidate) === -1
+        (vote: VoteNE) =>
+          vote.orderHead.find((x) => x.candidate === winner.candidate) ===
+          undefined
       )
     );
     // TODO combine this and first case together
@@ -207,17 +212,22 @@ export function* solve(votes: Array<Vote>): Generator<string, void, unknown> {
           ) +
           "\n\n---";
         nextVotes = votesNE.map((vote: VoteNE) => {
-          const didVoteForWinner =
-            vote.orderHead.indexOf(result.winner.candidate) !== -1;
+          const support = vote.orderHead.find(
+            ({ candidate }) => candidate === result.winner.candidate
+          );
           // TODO fix rounding issues probably by `x - 1`
           return {
             voter: vote.voter,
-            weight: didVoteForWinner
-              ? vote.weight * result.winningWeightMultiplier
-              : vote.weight,
+            weight:
+              support !== undefined
+                ? vote.weight -
+                  vote.weight *
+                    (support.percent / 100) *
+                    (1 - result.winningWeightMultiplier)
+                : vote.weight,
             order: removeWinner(
               result.winner.candidate,
-              didVoteForWinner
+              support !== undefined
                 ? vote.orderTail
                 : [vote.orderHead, ...vote.orderTail]
             ),
@@ -269,4 +279,8 @@ const renderVotes = (votes: Array<Vote>) =>
 
 const renderVoter = (vote: Vote) =>
   `${vote.voter} (${vote.weight.toFixed(2)}):` +
-  vote.order.map((x) => "\n  - " + x.join(",")).join("");
+  vote.order
+    .map(
+      (x) => "\n  - " + x.map((y) => `${y.candidate} (${y.percent}%)`).join(",")
+    )
+    .join("");

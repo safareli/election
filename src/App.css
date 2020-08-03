@@ -15,3 +15,14 @@
 .VoterArray > fieldset > .array-item-list > .array-item {
   min-width: 430px;
 }
+
+.Candidate {
+  float: left;
+  width: 70px;
+  margin-right: 10px;
+}
+
+.CandidatePercent {
+  float: left;
+  width: 70px;
+}

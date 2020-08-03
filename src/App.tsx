@@ -37,14 +37,28 @@ const schema = {
           type: "array",
           minItems: 1,
           items: {
-            type: "string",
-            default: "A",
+            type: "object",
+            properties: {
+              candidate: {
+                type: "string",
+                title: "Candidate",
+                default: "A",
+              },
+              percent: {
+                type: "number",
+                title: "Percent",
+                default: 100,
+                minimum: 0,
+                maximum: 100,
+              },
+            },
           },
         },
       },
     },
   },
 };
+
 const uiSchema = {
   classNames: "VoterArray",
   "ui:options": {
@@ -56,6 +70,14 @@ const uiSchema = {
       items: {
         "ui:options": {
           orderable: false,
+        },
+        items: {
+          candidate: {
+            classNames: "Candidate",
+          },
+          percent: {
+            classNames: "CandidatePercent",
+          },
         },
       },
     },
