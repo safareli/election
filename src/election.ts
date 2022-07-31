@@ -110,7 +110,7 @@ function* solveOneRound(
       winner,
     } as RoundRes;
   } else {
-    if (candidatesSorted[0].weight === candidatesSorted[1].weight) {
+    if (candidatesSorted[0].weight.toFixed(2) === candidatesSorted[1].weight.toFixed(2)) {
       return {
         type: "COLLISION",
         candidates: candidatesSorted,
